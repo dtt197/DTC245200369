@@ -1,0 +1,77 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: sv-mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_ROOT_PASSWORD mysql -h 127.0.0.1 -u root -e 'SELECT 1' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+
+  app:
+    build: ./app
+    image: sinhvien-app:1.0
+    container_name: sv-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+    networks:
+      - db_net
+      - web_net
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: sv-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PMA_HOST: db
+      PMA_ABSOLUTE_URI: https://localhost:8443/phpmyadmin/
+    networks:
+      - db_net
+      - web_net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sv-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+      - phpmyadmin
+    ports:
+      - "8090:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - web_net
+
+networks:
+  db_net:
+    internal: true    # MySQL khong co duong ra Internet
+  web_net:
+
+volumes:
+  mysql_data:

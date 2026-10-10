@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý sinh viên</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:1000px;margin:20px auto;padding:0 12px;color:#222}
+  h1{color:#1f4e79}
+  h2{margin-top:32px;border-bottom:2px solid #1f4e79;padding-bottom:4px}
+  table{border-collapse:collapse;width:100%;margin:8px 0}
+  th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+  th{background:#eaf1f8}
+  form{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  input,select,button{padding:6px}
+  button{cursor:pointer}
+</style>
+</head>
+<body>
+<h1>Hệ thống Quản lý Sinh viên</h1>
+
+<h2>1. Lớp</h2>
+<form id="fLop">
+  <input name="ma_lop" placeholder="Mã lớp" required>
+  <input name="ten_lop" placeholder="Tên lớp" required>
+  <button>Thêm lớp</button>
+</form>
+<table><thead><tr><th>ID</th><th>Mã lớp</th><th>Tên lớp</th><th>Thao tác</th></tr></thead><tbody id="tbLop"></tbody></table>
+
+<h2>2. Sinh viên</h2>
+<form id="fSV">
+  <input name="ma_sv" placeholder="Mã SV" required>
+  <input name="ho_ten" placeholder="Họ tên" required>
+  <input name="email" type="email" placeholder="Email" required>
+  <select name="lop_id" id="selLop" required></select>
+  <button>Thêm sinh viên</button>
+</form>
+<table><thead><tr><th>ID</th><th>Mã SV</th><th>Họ tên</th><th>Email</th><th>Lớp</th><th>Thao tác</th></tr></thead><tbody id="tbSV"></tbody></table>
+
+<h2>3. Điểm số</h2>
+<form id="fDiem">
+  <select name="sinh_vien_id" id="selSV" required></select>
+  <input name="mon_hoc" placeholder="Môn học" required>
+  <input name="diem" type="number" step="0.01" min="0" max="10" placeholder="Điểm (0-10)" required>
+  <button>Thêm điểm</button>
+</form>
+<table><thead><tr><th>ID</th><th>Mã SV</th><th>Họ tên</th><th>Môn học</th><th>Điểm</th><th>Thao tác</th></tr></thead><tbody id="tbDiem"></tbody></table>
+
+<script>
+const api = async (method, url, body) => {
+  const r = await fetch(url, {
+    method,
+    headers: {'Content-Type': 'application/json'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || ('Loi ' + r.status));
+  return data;
+};
+
+const save = async (method, url, body) => {
+  try { await api(method, url, body); await loadAll(); }
+  catch (e) { alert(e.message); }
+};
+
+function render(tbId, rows, cols, onEdit, onDel) {
+  const tb = document.getElementById(tbId);
+  tb.replaceChildren();
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    cols.forEach(c => {
+      const td = document.createElement('td');
+      td.textContent = r[c] ?? '';
+      tr.appendChild(td);
+    });
+    const act = document.createElement('td');
+    const be = document.createElement('button'); be.textContent = 'Sửa';
+    be.onclick = () => onEdit(r);
+    const bd = document.createElement('button'); bd.textContent = 'Xóa';
+    bd.onclick = () => { if (confirm('Xóa dòng này?')) onDel(r); };
+    act.append(be, ' ', bd);
+    tr.appendChild(act);
+    tb.appendChild(tr);
+  });
+}
+
+function fillSelect(id, rows, valueKey, labelFn) {
+  const sel = document.getElementById(id);
+  sel.replaceChildren();
+  rows.forEach(r => {
+    const o = document.createElement('option');
+    o.value = r[valueKey]; o.textContent = labelFn(r);
+    sel.appendChild(o);
+  });
+}
+
+async function loadAll() {
+  const lop = await api('GET', '/api/lop');
+  render('tbLop', lop, ['id', 'ma_lop', 'ten_lop'],
+    r => {
+      const ma = prompt('Mã lớp', r.ma_lop); if (ma === null) return;
+      const ten = prompt('Tên lớp', r.ten_lop); if (ten === null) return;
+      save('PUT', '/api/lop/' + r.id, {ma_lop: ma, ten_lop: ten});
+    },
+    r => save('DELETE', '/api/lop/' + r.id));
+  fillSelect('selLop', lop, 'id', r => r.ma_lop + ' - ' + r.ten_lop);
+
+  const sv = await api('GET', '/api/sinhvien');
+  render('tbSV', sv, ['id', 'ma_sv', 'ho_ten', 'email', 'ten_lop'],
+    r => {
+      const ma = prompt('Mã SV', r.ma_sv); if (ma === null) return;
+      const ten = prompt('Họ tên', r.ho_ten); if (ten === null) return;
+      const em = prompt('Email', r.email); if (em === null) return;
+      save('PUT', '/api/sinhvien/' + r.id, {ma_sv: ma, ho_ten: ten, email: em, lop_id: r.lop_id});
+    },
+    r => save('DELETE', '/api/sinhvien/' + r.id));
+  fillSelect('selSV', sv, 'id', r => r.ma_sv + ' - ' + r.ho_ten);
+
+  const diem = await api('GET', '/api/diem');
+  render('tbDiem', diem, ['id', 'ma_sv', 'ho_ten', 'mon_hoc', 'diem'],
+    r => {
+      const mon = prompt('Môn học', r.mon_hoc); if (mon === null) return;
+      const d = prompt('Điểm (0-10)', r.diem); if (d === null) return;
+      save('PUT', '/api/diem/' + r.id, {sinh_vien_id: r.sinh_vien_id, mon_hoc: mon, diem: d});
+    },
+    r => save('DELETE', '/api/diem/' + r.id));
+}
+
+function bind(formId, url) {
+  document.getElementById(formId).addEventListener('submit', async e => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(e.target).entries());
+    try { await api('POST', url, body); e.target.reset(); await loadAll(); }
+    catch (err) { alert(err.message); }
+  });
+}
+bind('fLop', '/api/lop');
+bind('fSV', '/api/sinhvien');
+bind('fDiem', '/api/diem');
+
+loadAll().catch(e => alert(e.message));
+</script>
+</body>
+</html>
