@@ -126,14 +126,18 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: sv-cadvisor
     restart: unless-stopped
+    privileged: true   # cAdvisor can quyen doc cgroup cua cac container khac
     command:
       - --docker_only=true
       - --housekeeping_interval=15s
+    devices:
+      - /dev/kmsg
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
     networks:
       - monitor_net
 
