@@ -8,3 +8,4 @@ nginx/certs/*.key
 node_modules/
 *.log
 .DS_Store
+nginx/certs/*.crt

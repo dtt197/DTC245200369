@@ -33,8 +33,6 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
       DB_NAME: ${MYSQL_DATABASE}
-    ports:
-      - "127.0.0.1:3200:3000"   # Buoc 3 se bo dong nay, chi cho Nginx truy cap
     networks:
       - db_net
       - web_net
@@ -48,10 +46,26 @@ services:
         condition: service_healthy
     environment:
       PMA_HOST: db
-    ports:
-      - "127.0.0.1:8088:80"
+      PMA_ABSOLUTE_URI: https://localhost:8443/phpmyadmin/
     networks:
       - db_net
+      - web_net
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: sv-nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+      - phpmyadmin
+    ports:
+      - "8090:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    networks:
       - web_net
 
 networks:
