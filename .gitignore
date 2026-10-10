@@ -9,3 +9,7 @@ node_modules/
 *.log
 .DS_Store
 nginx/certs/*.crt
+.env.bak
+*.bak
+.env.bak
+*.bak
