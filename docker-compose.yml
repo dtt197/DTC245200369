@@ -1,3 +1,4 @@
+# hardening-step6: no-new-privileges, gioi han tai nguyen, app read-only
 networks:
   db_net:
     internal: true    # MySQL khong co duong ra Internet
@@ -15,6 +16,10 @@ services:
     image: mysql:8.0
     container_name: sv-mysql-db
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    cpus: 1.0
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -37,6 +42,16 @@ services:
     image: sinhvien-app:1.0
     container_name: sv-app
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    pids_limit: 200
     depends_on:
       db:
         condition: service_healthy
@@ -53,6 +68,10 @@ services:
     image: phpmyadmin:5.2
     container_name: sv-phpmyadmin
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.5
     depends_on:
       db:
         condition: service_healthy
@@ -67,6 +86,10 @@ services:
     image: nginx:1.27-alpine
     container_name: sv-nginx
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.5
     depends_on:
       - app
       - phpmyadmin
@@ -86,6 +109,10 @@ services:
     image: prom/prometheus:v3.2.1
     container_name: sv-prometheus
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 1.0
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.retention.time=7d
@@ -102,6 +129,10 @@ services:
     image: grafana/grafana:11.5.2
     container_name: sv-grafana
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 384m
+    cpus: 0.5
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
@@ -126,6 +157,8 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: sv-cadvisor
     restart: unless-stopped
+    mem_limit: 384m
+    cpus: 0.5
     privileged: true   # cAdvisor can quyen doc cgroup cua cac container khac
     command:
       - --docker_only=true
@@ -145,6 +178,10 @@ services:
     image: prom/node-exporter:v1.8.2
     container_name: sv-node-exporter
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    cpus: 0.25
     pid: host
     command:
       - --path.rootfs=/host
@@ -157,6 +194,10 @@ services:
     image: prom/mysqld-exporter:v0.17.2
     container_name: sv-mysqld-exporter
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    cpus: 0.25
     command:
       - --mysqld.address=db:3306
       - --mysqld.username=exporter
@@ -173,6 +214,10 @@ services:
     image: nginx/nginx-prometheus-exporter:1.4.1
     container_name: sv-nginx-exporter
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    cpus: 0.25
     command:
       - --nginx.scrape-uri=http://nginx:8081/stub_status
     depends_on:
@@ -186,6 +231,10 @@ services:
     image: grafana/loki:3.4.2
     container_name: sv-loki
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    cpus: 1.0
     command:
       - -config.file=/etc/loki/loki-config.yml
     volumes:
@@ -198,6 +247,10 @@ services:
     image: grafana/promtail:3.4.2
     container_name: sv-promtail
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    cpus: 0.5
     user: "0:0"
     command:
       - -config.file=/etc/promtail/promtail-config.yml
