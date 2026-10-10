@@ -1,0 +1,10 @@
+# Bi mat - KHONG BAO GIO dua len Git
+.env
+*.key
+*.pem
+nginx/certs/*.key
+
+# Rac he thong
+node_modules/
+*.log
+.DS_Store
